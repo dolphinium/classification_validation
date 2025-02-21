@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classification Validation</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <style>
+        .transcript-box {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .transcript-content {
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        
+        .transcript-collapsed {
+            max-height: 100px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">Classification Validation</h1>
+        
+        <!-- Tab Navigation -->
+        <div class="border-b border-gray-200 mb-8">
+            <nav class="-mb-px flex space-x-8">
+                <a href="{{ url_for('pending_annotations') }}"
+                   class="{% if active_tab == 'pending' %}border-indigo-500 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Pending ({{ pending_data|length }})
+                </a>
+                <a href="{{ url_for('completed_annotations') }}"
+                   class="{% if active_tab == 'annotated' %}border-indigo-500 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Annotated ({{ annotated_data|length }})
+                </a>
+            </nav>
+        </div>
+
+        <!-- Data Display -->
+        {% set display_data = pending_data if active_tab == 'pending' else annotated_data %}
+        
+        {% if display_data %}
+        <div class="space-y-6">
+            {% for row in display_data %}
+            <div class="bg-white shadow rounded-lg p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Left Column: Transcript -->
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Transcript ({{ row.file_id }})</h3>
+                        <div class="transcript-box bg-gray-50 rounded-md p-4">
+                            <div class="transcript-content transcript-collapsed" id="transcript-{{ row.file_id }}">
+                                {{ row.transcript }}
+                            </div>
+                            <button onclick="toggleTranscript('{{ row.file_id }}')"
+                                    class="mt-2 text-sm text-indigo-600 hover:text-indigo-500">
+                                Show More/Less
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: System Output & Annotation Form -->
+                    <div>
+                        <!-- System Output -->
+                        <div class="mb-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">LLM Response</h4>
+                            <div class="bg-gray-50 rounded-md p-4">
+                                <p><span class="font-medium">Classification:</span> {{ row.classification }}</p>
+                                <p><span class="font-medium">Category:</span> {{ row.category }}</p>
+                                <p class="text-gray-600 mt-2">{{ row.justification }}</p>
+                            </div>
+                        </div>
+
+                        {% if active_tab == 'pending' %}
+                        <!-- Annotation Form -->
+                        <form action="{{ url_for('handle_annotation') }}" method="POST" class="space-y-4">
+                            <input type="hidden" name="file_id" value="{{ row.file_id }}">
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Final Classification</label>
+                                <select name="final_classification" 
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    {% for value, label in classifications %}
+                                    <option value="{{ value }}" {% if value == row.final_classification %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Final Category</label>
+                                <select name="final_category"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    {% for value, label in categories %}
+                                    <option value="{{ value }}" {% if value == row.final_category %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" name="excluded" id="excluded-{{ row.file_id }}"
+                                           class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                           {% if row.excluded == "True" %}checked{% endif %}
+                                           onchange="toggleExclusionNote('{{ row.file_id }}')">
+                                    <label class="ml-2 block text-sm text-gray-700">Exclude this entry</label>
+                                </div>
+                                
+                                <div id="exclusion-note-{{ row.file_id }}" 
+                                     class="{% if row.excluded != 'True' %}hidden{% endif %}">
+                                    <label class="block text-sm font-medium text-gray-700">Exclusion Note</label>
+                                    <textarea name="exclusion_note"
+                                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                              rows="3"
+                                              placeholder="Please provide a reason for exclusion...">{{ row.exclusion_note }}</textarea>
+                                </div>
+                            </div>
+
+                            <button type="submit" 
+                                    class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Save Annotation
+                            </button>
+                        </form>
+                        {% else %}
+                        <!-- Annotation Display -->
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700">Final Classification</h4>
+                                <p class="mt-1">{{ row.final_classification or "None" }}</p>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700">Final Category</h4>
+                                <p class="mt-1">{{ row.final_category or "None" }}</p>
+                            </div>
+                            {% if row.excluded == "True" %}
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700">Exclusion Note</h4>
+                                <p class="mt-1">{{ row.exclusion_note or "No note provided" }}</p>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700">Annotation Date</h4>
+                                <p class="mt-1">{{ row.annotation_date }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <p class="text-gray-500">No {{ 'pending' if active_tab == 'pending' else 'annotated' }} entries found.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function toggleTranscript(fileId) {
+            const transcript = document.getElementById(`transcript-${fileId}`);
+            transcript.classList.toggle('transcript-collapsed');
+        }
+
+        function toggleExclusionNote(fileId) {
+            const checkbox = document.getElementById(`excluded-${fileId}`);
+            const noteDiv = document.getElementById(`exclusion-note-${fileId}`);
+            
+            if (checkbox.checked) {
+                noteDiv.classList.remove('hidden');
+            } else {
+                noteDiv.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

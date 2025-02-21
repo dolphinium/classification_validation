@@ -1,0 +1,14 @@
+flask
+uvicorn
+requests
+fastapi
+torchaudio
+SpeechRecognition
+torch
+pydantic
+google
+google.genai
+python-multipart
+pydub
+soundfile
+python-dotenv
