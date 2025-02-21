@@ -1,41 +1,77 @@
-suggested env: conda
-git clone "url"
-cd "dir"
+# Project Setup and Usage Guide
 
-crate conda environment and install the requirements:
+## 1. Installation and Environment Setup
+
+### 1.1 Clone the Repository
+
+```bash
+git clone https://github.com/dolphinium/classification_validation.git
+cd classification_validation
+```
+
+### 1.2.1 CONDA (RECOMMENDED)
+
+```bash
 conda create -n tts_annotate python=3.10
 conda activate tts_annotate
 pip install -r requirements.txt
+```
 
+### 1.2.2 VENV 
 
-for venv
+If you prefer using venv:
+
+```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
 
+## 2. Configuration
 
-cd validate_result
+### 2.1 Obtain GEMINI_API_KEY
 
+Please visit [address](https://aistudio.google.com/app/u/0/apikey) to 
+obtain your GEMINI_API_KEY and add it to your `.ENV` file:
 
-get the gemini api key from this [address](https://aistudio.google.com/app/u/0/apikey): and set the environment variable into .ENV file
+```bash
 GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
 
+### 2.2 Data Preparation
 
-place the audio files that I sent you under the data/audio_files folder
+Place the provided audio files in the `data/audio_files` folder.
 
-start the uvicorn server for backend api
+## 3. Server Setup
+
+### 3.1 Start Uvicorn Server
+
+```bash
+cd validate_result
 uvicorn pipeline_api:app --reload
+```
 
+### 3.2 Start Flask App
 
-start the flask app
+```bash
 python app.py
+```
 
+## 4. Running Scripts
 
-to generate llm responses:
+### 4.1 Generate LLM Responses
+
+```bash
 cd scripts
 python generate_system_output.py
+```
 
-start annotate
+### 4.2 Annotate Results
 
-after finishing annotate upload the annotated.csv to this drive:
-DRIVE LINK
+Annotate results on flask web server running on [local](http://127.0.0.1:5000)
+
+## 5. Uploading Results
+
+After completing annotation, please upload the `annotated.csv` file to the 
+provided [DRIVE LINK](Drive Link URL).
+
