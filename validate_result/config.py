@@ -1,4 +1,3 @@
-# config.py
 class Config:
     SYSTEM_OUTPUT_PATH = "data/system_output.csv"
     ANNOTATED_PATH = "data/annotated.csv"
